@@ -8,7 +8,7 @@ import {
 	VoiceChannel,
 } from 'discord.js';
 import type { Command } from './index.ts';
-import { joinVoiceChannel } from '@discordjs/voice';
+import { EndBehaviorType, joinVoiceChannel, VoiceReceiver } from '@discordjs/voice';
 import moment from 'moment';
 
 export default {
@@ -31,7 +31,13 @@ export default {
 				channelId: channel.id,
 				guildId: channel.guild.id,
 				adapterCreator: channel.guild.voiceAdapterCreator, // Should be referring to the correct client
+				selfDeaf: false,
+				selfMute: false,
 			});
+
+			const { receiver } = connection;
+
+			connection.on('');
 
 			const stopButton = new ButtonBuilder()
 				.setCustomId('stop-record')
@@ -44,7 +50,8 @@ export default {
 				components: [row as any],
 				fetchReply: true,
 			});
-			const joinTime = new Date();
+
+			const joinTime = moment(new Date());
 
 			const collector = controlInteraction.createMessageComponentCollector({
 				componentType: ComponentType.Button,
@@ -53,12 +60,33 @@ export default {
 			collector.on('collect', (interaction) => {
 				if (interaction.customId === 'stop-record') {
 					connection.destroy();
-					const dulation = new Date().getTime() - joinTime.getTime();
+					const duration = moment.duration(moment(new Date()).diff(joinTime));
+					const formattedDuration = moment.utc(duration.asMilliseconds()).format('HH:mm:ss');
+
 					interaction.update({
-						content: `Recorded in ${moment(dulation).format('HH:mm:ss')}`,
 						components: [],
 					});
+					controlInteraction.edit({
+						content: '',
+						components: [],
+						embeds: [
+							{
+								title: 'Record Ended',
+								description: `Recorded in ${formattedDuration}
+
+                            Download 
+                            https://www.youtube.com/watch?v=dQw4w9WgXcQ`,
+								color: 0x0099ff,
+							},
+						],
+					});
 				}
+			});
+
+			const audioReceiveStream = connection.receiver.subscribe('1198631513676328994', {
+				end: {
+					behavior: EndBehaviorType.Manual,
+				},
 			});
 		} else {
 			interaction.reply({
